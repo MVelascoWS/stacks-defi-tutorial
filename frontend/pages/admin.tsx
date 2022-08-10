@@ -1,16 +1,41 @@
+import { ContractCallRegularOptions, openContractCall, UserData } from "@stacks/connect";
+import { StacksMocknet } from "@stacks/network";
+import { standardPrincipalCV, uintCV } from "@stacks/transactions";
 import { useState } from "react";
 import ActionButton from "../components/ActionButton";
 import Auth from "../components/Auth";
 import NumberInput from "../components/NumberInput";
 import PageHeading from "../components/PageHeading";
+import { appDetails, contractOwnerAddress } from "../lib/constants";
+import truncateMiddle from "../lib/truncate";
+import { useTransactionToasts } from "../providers/TransactionToastProvider";
 
 export default function AdminPage() {
   const [exchangeToken, setExchangeToken] = useState<string>('');
   const [mintAmount, setMintAmount] = useState<number>(1_000_000)
+  const { addTransactionToast } = useTransactionToasts()
 
   const mintTokens = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
     console.log(`Minting ${mintAmount} of ${exchangeToken}`)
+
+    const network = new StacksMocknet()
+
+    // (contract-call? .magic-beans mint u1000000 tx-sender)
+    const options: ContractCallRegularOptions = {
+      contractAddress: contractOwnerAddress,
+      contractName: exchangeToken,
+      functionName: 'mint',
+      functionArgs: [
+        uintCV(mintAmount),
+        standardPrincipalCV(contractOwnerAddress),
+      ],
+      network,
+      appDetails,
+      onFinish: ({ txId }) => addTransactionToast(txId, `Minting ${exchangeToken} to ${truncateMiddle(contractOwnerAddress)}...`),
+    }
+
+    await openContractCall(options)
   }
 
   return (
